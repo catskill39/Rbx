@@ -1,4 +1,3 @@
--- // ROBLOX Custom Script with Enhanced UI & Effects
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
@@ -7,90 +6,126 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 
--- Toggle states
 local toggles = {
 	DeleteWall = false,
 	Noclip = false,
 	Highlight = false
 }
 
--- Create GUI
+-- UI Setup
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 gui.Name = "CustomToolMenu"
 gui.ResetOnSpawn = false
 
--- Загрузка (анимация)
-local loadingFrame = Instance.new("Frame", gui)
-loadingFrame.Size = UDim2.new(1, 0, 1, 0)
-loadingFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+-- Градиент
+local function applyGradient(frame)
+	local gradient = Instance.new("UIGradient", frame)
+	gradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 170, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))
+	}
+	gradient.Rotation = 45
+end
 
-local loadingLabel = Instance.new("TextLabel", loadingFrame)
-loadingLabel.Size = UDim2.new(0.5, 0, 0.1, 0)
-loadingLabel.Position = UDim2.new(0.25, 0, 0.45, 0)
-loadingLabel.Text = "Загрузка..."
-loadingLabel.TextScaled = true
-loadingLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-loadingLabel.BackgroundTransparency = 1
+-- Центральное окно
+local mainFrame = Instance.new("Frame", gui)
+mainFrame.Size = UDim2.new(0, 300, 0, 260)
+mainFrame.Position = UDim2.new(0.5, -150, 0.5, -130)
+mainFrame.BackgroundTransparency = 0.2
+mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+mainFrame.BorderSizePixel = 0
+applyGradient(mainFrame)
 
--- Плавное исчезновение загрузки
-task.wait(1.2)
-TweenService:Create(loadingFrame, TweenInfo.new(1), {BackgroundTransparency = 1}):Play()
-TweenService:Create(loadingLabel, TweenInfo.new(1), {TextTransparency = 1}):Play()
-task.wait(1)
-loadingFrame:Destroy()
+local corner = Instance.new("UICorner", mainFrame)
+corner.CornerRadius = UDim.new(0, 12)
 
--- Главное меню
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 240, 0, 180)
-frame.Position = UDim2.new(0, 10, 0, 10)
-frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-frame.BorderSizePixel = 0
-frame.AnchorPoint = Vector2.new(0, 0)
-frame.BackgroundTransparency = 1
+-- Перемещение
+local dragging, dragInput, dragStart, startPos
+mainFrame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = mainFrame.Position
 
--- Анимация появления меню
-TweenService:Create(frame, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
 
--- Buttons
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStart
+		mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+
+-- Крестик и сворачивание
+local closeBtn = Instance.new("TextButton", mainFrame)
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -35, 0, 5)
+closeBtn.Text = "✖"
+closeBtn.TextScaled = true
+closeBtn.BackgroundColor3 = Color3.fromRGB(80, 0, 0)
+closeBtn.TextColor3 = Color3.new(1, 1, 1)
+Instance.new("UICorner", closeBtn)
+
+local minimizeBtn = Instance.new("TextButton", mainFrame)
+minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
+minimizeBtn.Position = UDim2.new(1, -70, 0, 5)
+minimizeBtn.Text = "➖"
+minimizeBtn.TextScaled = true
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 0)
+minimizeBtn.TextColor3 = Color3.new(1, 1, 1)
+Instance.new("UICorner", minimizeBtn)
+
+-- Мини кнопка
+local miniButton = Instance.new("TextButton", gui)
+miniButton.Size = UDim2.new(0, 100, 0, 40)
+miniButton.Position = UDim2.new(0, 20, 1, -60)
+miniButton.Text = "Меню"
+miniButton.Visible = false
+miniButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+miniButton.TextColor3 = Color3.new(1, 1, 1)
+applyGradient(miniButton)
+Instance.new("UICorner", miniButton)
+
+-- Функции меню
+local buttonY = 50
 local buttons = {}
-local function makeButton(text, y, callback)
-	local btn = Instance.new("TextButton", frame)
-	btn.Size = UDim2.new(1, -20, 0, 40)
-	btn.Position = UDim2.new(0, 10, 0, y)
-	btn.Text = text
-	btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-	btn.TextColor3 = Color3.new(1, 1, 1)
-	btn.TextSize = 20
-	btn.Font = Enum.Font.GothamSemibold
-	btn.AutoButtonColor = true
-	btn.BorderSizePixel = 0
 
-	local uiCorner = Instance.new("UICorner", btn)
-	uiCorner.CornerRadius = UDim.new(0, 8)
+local function makeButton(name, callback)
+	local btn = Instance.new("TextButton", mainFrame)
+	btn.Size = UDim2.new(0.9, 0, 0, 40)
+	btn.Position = UDim2.new(0.05, 0, 0, buttonY)
+	btn.Text = name
+	btn.TextScaled = true
+	btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	applyGradient(btn)
+	Instance.new("UICorner", btn)
 
 	btn.MouseButton1Click:Connect(callback)
+	buttonY = buttonY + 50
 	table.insert(buttons, btn)
-	return btn
 end
 
--- Удаление объектов
-local function toggleDelete()
+makeButton("Удалять: Выкл", function()
 	toggles.DeleteWall = not toggles.DeleteWall
 	buttons[1].Text = "Удалять: " .. (toggles.DeleteWall and "Вкл" or "Выкл")
-end
+end)
 
--- Noclip
-local function toggleNoclip()
+makeButton("Noclip: Выкл", function()
 	toggles.Noclip = not toggles.Noclip
 	buttons[2].Text = "Noclip: " .. (toggles.Noclip and "Вкл" or "Выкл")
-end
+end)
 
--- Highlight
 local highlights = {}
-local function toggleHighlight()
+makeButton("Подсветка: Выкл", function()
 	toggles.Highlight = not toggles.Highlight
 	buttons[3].Text = "Подсветка: " .. (toggles.Highlight and "Вкл" or "Выкл")
-
 	if toggles.Highlight then
 		for _, obj in pairs(workspace:GetDescendants()) do
 			if obj:IsA("BasePart") and not obj:FindFirstChild("Highlight") then
@@ -103,25 +138,20 @@ local function toggleHighlight()
 				h.Adornee = obj
 				h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 				h.Parent = obj
-
-				TweenService:Create(h, TweenInfo.new(0.6), {FillTransparency = 0.25, OutlineTransparency = 0}):Play()
+				TweenService:Create(h, TweenInfo.new(0.6), {FillTransparency = 0.2, OutlineTransparency = 0.1}):Play()
 				table.insert(highlights, h)
 			end
 		end
 	else
 		for _, h in ipairs(highlights) do
 			if h and h:IsDescendantOf(game) then
-				TweenService:Create(h, TweenInfo.new(0.5), {FillTransparency = 1, OutlineTransparency = 1}):Play()
+				TweenService:Create(h, TweenInfo.new(0.4), {FillTransparency = 1, OutlineTransparency = 1}):Play()
 				task.delay(0.5, function() if h then h:Destroy() end end)
 			end
 		end
 		highlights = {}
 	end
-end
-
-makeButton("Удалять: Выкл", 0, toggleDelete)
-makeButton("Noclip: Выкл", 45, toggleNoclip)
-makeButton("Подсветка: Выкл", 90, toggleHighlight)
+end)
 
 -- Noclip система
 RunService.Stepped:Connect(function()
@@ -134,13 +164,28 @@ RunService.Stepped:Connect(function()
 	end
 end)
 
--- Удаление при клике на любой BasePart
+-- Удаление по нажатию на объект
 UserInputService.InputBegan:Connect(function(input)
-	if toggles.DeleteWall and input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+	if toggles.DeleteWall and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) then
 		local mouse = player:GetMouse()
 		local target = mouse.Target
 		if target and target:IsA("BasePart") then
 			target:Destroy()
 		end
 	end
+end)
+
+-- Закрытие и сворачивание
+closeBtn.MouseButton1Click:Connect(function()
+	mainFrame.Visible = false
+end)
+
+minimizeBtn.MouseButton1Click:Connect(function()
+	mainFrame.Visible = false
+	miniButton.Visible = true
+end)
+
+miniButton.MouseButton1Click:Connect(function()
+	mainFrame.Visible = true
+	miniButton.Visible = false
 end)

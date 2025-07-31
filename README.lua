@@ -7,6 +7,7 @@ local Lighting = game:GetService("Lighting")
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 
+-- Переменные для флагов функций чита
 local toggles = {
 	DeleteWall = false,
 	Noclip = false,
@@ -22,11 +23,12 @@ local toggles = {
 local highlights = {}
 local espHighlights = {}
 
--- UI Setup
+-- Создаём ScreenGui
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 gui.Name = "CustomToolMenu"
 gui.ResetOnSpawn = false
 
+-- Вспомогательная функция для градиента
 local function applyGradient(frame)
 	local gradient = Instance.new("UIGradient", frame)
 	gradient.Color = ColorSequence.new{
@@ -36,72 +38,129 @@ local function applyGradient(frame)
 	gradient.Rotation = 45
 end
 
--- Имитация загрузки библиотек (иконка с прогрессом)
-local loadingFrame = Instance.new("Frame", gui)
-loadingFrame.Size = UDim2.new(0, 200, 0, 80)
-loadingFrame.Position = UDim2.new(0.5, -100, 0.4, -40)
-loadingFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-loadingFrame.BorderSizePixel = 0
-loadingFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-local loadingCorner = Instance.new("UICorner", loadingFrame)
-loadingCorner.CornerRadius = UDim.new(0, 12)
+-- Функция создания заголовка темы
+local function createThemeTitle(text, posY)
+	local title = Instance.new("TextLabel", mainFrame)
+	title.Size = UDim2.new(0.9, 0, 0, 30)
+	title.Position = UDim2.new(0.05, 0, 0, posY)
+	title.BackgroundTransparency = 1
+	title.Text = text
+	title.Font = Enum.Font.GothamBold
+	title.TextColor3 = Color3.fromRGB(180, 180, 180)
+	title.TextScaled = true
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	return title
+end
 
-local loadingLabel = Instance.new("TextLabel", loadingFrame)
-loadingLabel.Size = UDim2.new(1, -20, 0, 30)
-loadingLabel.Position = UDim2.new(0, 10, 0, 10)
-loadingLabel.BackgroundTransparency = 1
-loadingLabel.TextColor3 = Color3.new(1,1,1)
-loadingLabel.TextScaled = true
-loadingLabel.Font = Enum.Font.Gotham
-
-local progressBarBackground = Instance.new("Frame", loadingFrame)
-progressBarBackground.Size = UDim2.new(0.9, 0, 0, 20)
-progressBarBackground.Position = UDim2.new(0.05, 0, 0, 45)
-progressBarBackground.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-progressBarBackground.BorderSizePixel = 0
-local progressBarCorner = Instance.new("UICorner", progressBarBackground)
-progressBarCorner.CornerRadius = UDim.new(0, 10)
-
-local progressBar = Instance.new("Frame", progressBarBackground)
-progressBar.Size = UDim2.new(0, 0, 1, 0)
-progressBar.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-progressBar.BorderSizePixel = 0
-local progressCorner = Instance.new("UICorner", progressBar)
-progressCorner.CornerRadius = UDim.new(0, 10)
-
-coroutine.wrap(function()
-	local progress = 0
-	while progress < 100 do
-		progress = progress + math.random(2, 6)
-		if progress > 100 then progress = 100 end
-		loadingLabel.Text = "Установка библиотек... " .. progress .. "%"
-		TweenService:Create(progressBar, TweenInfo.new(0.3, Enum.EasingStyle.Linear), {Size = UDim2.new(progress/100, 0, 1, 0)}):Play()
-		wait(0.3)
-	end
-	wait(0.5)
-	loadingFrame:Destroy()
-	mainFrame.Visible = true
-end)()
-
+-- Главное окно меню (скрыто пока идёт загрузка)
 local mainFrame = Instance.new("Frame", gui)
-mainFrame.Size = UDim2.new(0, 320, 0, 500)
-mainFrame.Position = UDim2.new(0.5, -160, 0.5, -250)
+mainFrame.Size = UDim2.new(0, 320, 0, 520)
+mainFrame.Position = UDim2.new(0.5, -160, 0.5, -260)
 mainFrame.BackgroundTransparency = 0.2
 mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = false
 applyGradient(mainFrame)
-
 local corner = Instance.new("UICorner", mainFrame)
 corner.CornerRadius = UDim.new(0, 16)
 
+-- Кнопки закрытия и сворачивания с анимацией
+local closeBtn = Instance.new("TextButton", mainFrame)
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -40, 0, 10)
+closeBtn.Text = "✖"
+closeBtn.TextScaled = true
+closeBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+closeBtn.TextColor3 = Color3.new(1, 1, 1)
+closeBtn.AutoButtonColor = false
+local closeCorner = Instance.new("UICorner", closeBtn)
+closeCorner.CornerRadius = UDim.new(0, 8)
+
+local minimizeBtn = Instance.new("TextButton", mainFrame)
+minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
+minimizeBtn.Position = UDim2.new(1, -80, 0, 10)
+minimizeBtn.Text = "➖"
+minimizeBtn.TextScaled = true
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(150, 150, 0)
+minimizeBtn.TextColor3 = Color3.new(1, 1, 1)
+minimizeBtn.AutoButtonColor = false
+local minimizeCorner = Instance.new("UICorner", minimizeBtn)
+minimizeCorner.CornerRadius = UDim.new(0, 8)
+
+-- Мини кнопка для разворачивания
+local miniButton = Instance.new("TextButton", gui)
+miniButton.Size = UDim2.new(0, 100, 0, 40)
+miniButton.Position = UDim2.new(0, 20, 1, -60)
+miniButton.Text = "Меню"
+miniButton.Visible = false
+miniButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+miniButton.TextColor3 = Color3.new(1, 1, 1)
+applyGradient(miniButton)
+local miniCorner = Instance.new("UICorner", miniButton)
+miniCorner.CornerRadius = UDim.new(0, 12)
+
+-- Анимация сворачивания
+local function toggleMinimize()
+	if mainFrame.Visible then
+		-- Плавно уменьшаем прозрачность и потом скрываем
+		TweenService:Create(mainFrame, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
+		for _, obj in pairs(mainFrame:GetChildren()) do
+			if obj:IsA("TextButton") or obj:IsA("TextLabel") then
+				TweenService:Create(obj, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
+			end
+		end
+		task.delay(0.4, function()
+			mainFrame.Visible = false
+			mainFrame.BackgroundTransparency = 0.2
+			for _, obj in pairs(mainFrame:GetChildren()) do
+				if obj:IsA("TextButton") or obj:IsA("TextLabel") then
+					obj.TextTransparency = 0
+				end
+			end
+			miniButton.Visible = true
+		end)
+	else
+		miniButton.Visible = false
+		mainFrame.Visible = true
+		mainFrame.BackgroundTransparency = 1
+		for _, obj in pairs(mainFrame:GetChildren()) do
+			if obj:IsA("TextButton") or obj:IsA("TextLabel") then
+				obj.TextTransparency = 1
+			end
+		end
+		TweenService:Create(mainFrame, TweenInfo.new(0.4), {BackgroundTransparency = 0.2}):Play()
+		for _, obj in pairs(mainFrame:GetChildren()) do
+			if obj:IsA("TextButton") or obj:IsA("TextLabel") then
+				TweenService:Create(obj, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
+			end
+		end
+	end
+end
+
+closeBtn.MouseButton1Click:Connect(function()
+	-- Плавно скрываем меню (анимация)
+	TweenService:Create(mainFrame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+	for _, obj in pairs(mainFrame:GetChildren()) do
+		if obj:IsA("TextButton") or obj:IsA("TextLabel") then
+			TweenService:Create(obj, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+		end
+	end
+	task.delay(0.3, function()
+		mainFrame.Visible = false
+		miniButton.Visible = false
+	end)
+end)
+
+minimizeBtn.MouseButton1Click:Connect(toggleMinimize)
+miniButton.MouseButton1Click:Connect(toggleMinimize)
+
+-- Перемещение меню (для телефонов сенсор)
 local dragging, dragInput, dragStart, startPos
 mainFrame.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+	if input.UserInputType == Enum.UserInputType.Touch then
 		dragging = true
 		dragStart = input.Position
 		startPos = mainFrame.Position
-
 		input.Changed:Connect(function()
 			if input.UserInputState == Enum.UserInputState.End then
 				dragging = false
@@ -111,242 +170,332 @@ mainFrame.InputBegan:Connect(function(input)
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+	if dragging and input.UserInputType == Enum.UserInputType.Touch then
 		local delta = input.Position - dragStart
 		mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 	end
 end)
 
-local closeBtn = Instance.new("TextButton", mainFrame)
-closeBtn.Size = UDim2.new(0, 34, 0, 34)
-closeBtn.Position = UDim2.new(1, -40, 0, 10)
-closeBtn.Text = "✖"
-closeBtn.TextScaled = true
-closeBtn.BackgroundColor3 = Color3.fromRGB(80, 0, 0)
-closeBtn.TextColor3 = Color3.new(1, 1, 1)
-Instance.new("UICorner", closeBtn)
-
-local minimizeBtn = Instance.new("TextButton", mainFrame)
-minimizeBtn.Size = UDim2.new(0, 34, 0, 34)
-minimizeBtn.Position = UDim2.new(1, -80, 0, 10)
-minimizeBtn.Text = "➖"
-minimizeBtn.TextScaled = true
-minimizeBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 0)
-minimizeBtn.TextColor3 = Color3.new(1, 1, 1)
-Instance.new("UICorner", minimizeBtn)
-
-local miniButton = Instance.new("TextButton", gui)
-miniButton.Size = UDim2.new(0, 120, 0, 44)
-miniButton.Position = UDim2.new(0, 20, 1, -80)
-miniButton.Text = "Открыть меню"
-miniButton.Visible = false
-miniButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-miniButton.TextColor3 = Color3.new(1, 1, 1)
-applyGradient(miniButton)
-Instance.new("UICorner", miniButton)
-
-local function tweenCloseMenu()
-	local tween = TweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {Size = UDim2.new(0, 320, 0, 0)})
-	tween:Play()
-	tween.Completed:Wait()
-	mainFrame.Visible = false
-	miniButton.Visible = true
-	mainFrame.Size = UDim2.new(0, 320, 0, 500)
-end
-
-local function tweenOpenMenu()
-	mainFrame.Visible = true
-	miniButton.Visible = false
-	mainFrame.Size = UDim2.new(0, 320, 0, 0)
-	local tween = TweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {Size = UDim2.new(0, 320, 0, 500)})
-	tween:Play()
-end
-
-closeBtn.MouseButton1Click:Connect(function()
-	mainFrame.Visible = false
-	miniButton.Visible = false
-end)
-
-minimizeBtn.MouseButton1Click:Connect(tweenCloseMenu)
-miniButton.MouseButton1Click:Connect(tweenOpenMenu)
-
-local currentY = 50
-
-local function createThemeTitle(text)
-	local label = Instance.new("TextLabel", mainFrame)
-	label.Size = UDim2.new(0.9, 0, 0, 28)
-	label.Position = UDim2.new(0.05, 0, 0, currentY)
-	label.BackgroundTransparency = 1
-	label.Text = text
-	label.Font = Enum.Font.GothamBold
-	label.TextColor3 = Color3.fromRGB(255, 255, 255)
-	label.TextScaled = true
-	currentY = currentY + 32
-	return label
-end
-
+-- Создание кнопок с функцией и динамическим текстом
+local buttonY = 50
+local buttons = {}
 local function makeButton(name, callback)
 	local btn = Instance.new("TextButton", mainFrame)
 	btn.Size = UDim2.new(0.9, 0, 0, 40)
-	btn.Position = UDim2.new(0.05, 0, 0, currentY)
-	btn.Text = name
-	btn.TextScaled = true
+	btn.Position = UDim2.new(0.05, 0, 0, buttonY)
 	btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.TextScaled = true
+	btn.Text = name
+	btn.AutoButtonColor = false
 	applyGradient(btn)
-	Instance.new("UICorner", btn)
+	local corner = Instance.new("UICorner", btn)
+	corner.CornerRadius = UDim.new(0, 8)
+	
 	btn.MouseButton1Click:Connect(callback)
-	currentY = currentY + 50
+	buttonY = buttonY + 50
+	buttons[name] = btn
 	return btn
 end
 
--- Основные функции
-createThemeTitle("Основные функции")
+local function updateButton(name, state)
+	if buttons[name] then
+		buttons[name].Text = name:match("^[^:]+") .. ": " .. (state and "Вкл" or "Выкл")
+	end
+end
 
-makeButton("Удалять: Выкл", function()
+-- Темы (заголовки)
+local posY = 10
+local function createThemeHeader(title)
+	local header = Instance.new("TextLabel", mainFrame)
+	header.Size = UDim2.new(0.9, 0, 0, 30)
+	header.Position = UDim2.new(0.05, 0, 0, posY)
+	header.BackgroundTransparency = 1
+	header.Text = title
+	header.Font = Enum.Font.GothamBold
+	header.TextColor3 = Color3.fromRGB(200, 200, 200)
+	header.TextScaled = true
+	header.TextXAlignment = Enum.TextXAlignment.Left
+	posY = posY + 40
+	return header
+end
+
+-- Загрузка с прогресс-баром и анимацией
+local loadingFrame = Instance.new("Frame", gui)
+loadingFrame.Size = UDim2.new(0, 220, 0, 80)
+loadingFrame.Position = UDim2.new(0.5, -110, 0.4, -40)
+loadingFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+loadingFrame.BorderSizePixel = 0
+loadingFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+local loadingCorner = Instance.new("UICorner", loadingFrame)
+loadingCorner.CornerRadius = UDim.new(0, 16)
+
+local loadingLabel = Instance.new("TextLabel", loadingFrame)
+loadingLabel.Size = UDim2.new(1, -20, 0, 30)
+loadingLabel.Position = UDim2.new(0, 10, 0, 10)
+loadingLabel.BackgroundTransparency = 1
+loadingLabel.TextColor3 = Color3.new(1,1,1)
+loadingLabel.TextScaled = true
+loadingLabel.Font = Enum.Font.GothamBold
+loadingLabel.Text = "Установка библиотек... 0%"
+
+local progressBarBackground = Instance.new("Frame", loadingFrame)
+progressBarBackground.Size = UDim2.new(0.9, 0, 0, 20)
+progressBarBackground.Position = UDim2.new(0.05, 0, 0, 50)
+progressBarBackground.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+progressBarBackground.BorderSizePixel = 0
+local progressBarCorner = Instance.new("UICorner", progressBarBackground)
+progressBarCorner.CornerRadius = UDim.new(0, 12)
+
+local progressBar = Instance.new("Frame", progressBarBackground)
+progressBar.Size = UDim2.new(0, 0, 1, 0)
+progressBar.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+progressBar.BorderSizePixel = 0
+local progressCorner = Instance.new("UICorner", progressBar)
+progressCorner.CornerRadius = UDim.new(0, 12)
+
+-- Запускаем анимацию загрузки
+coroutine.wrap(function()
+	local progress = 0
+	while progress < 100 do
+		progress = progress + math.random(4, 9)
+		if progress > 100 then progress = 100 end
+		loadingLabel.Text = "Установка библиотек... " .. progress .. "%"
+		TweenService:Create(progressBar, TweenInfo.new(0.25, Enum.EasingStyle.Linear), {Size = UDim2.new(progress/100, 0, 1, 0)}):Play()
+		wait(0.25)
+	end
+	wait(0.5)
+	loadingFrame:Destroy()
+	mainFrame.Visible = true
+end)()
+
+-- Функции чита --
+
+-- DeleteWall (удаляет стены в зоне)
+local function toggleDeleteWall()
 	toggles.DeleteWall = not toggles.DeleteWall
+	updateButton("DeleteWall", toggles.DeleteWall)
 	if toggles.DeleteWall then
-		-- Пример удаления стены с именем "Wall"
-		for _, part in pairs(workspace:GetChildren()) do
-			if part.Name == "Wall" then
-				part:Destroy()
+		-- Пример реализации: удаляем стены в радиусе 10 от персонажа
+		spawn(function()
+			while toggles.DeleteWall do
+				for _, part in pairs(workspace:GetChildren()) do
+					if part:IsA("BasePart") and part.Name == "Wall" then
+						local dist = (part.Position - character.HumanoidRootPart.Position).Magnitude
+						if dist < 10 then
+							part:Destroy()
+						end
+					end
+				end
+				wait(1)
 			end
-		end
+		end)
 	end
-	mainFrame:FindFirstChild("Удалять: Выкл").Text = toggles.DeleteWall and "Удалять: Вкл" or "Удалять: Выкл"
-end)
+end
 
-makeButton("Ноклип: Выкл", function()
+-- Noclip (проход через стены)
+local function toggleNoclip()
 	toggles.Noclip = not toggles.Noclip
-	mainFrame:FindFirstChild("Ноклип: Выкл").Text = toggles.Noclip and "Ноклип: Вкл" or "Ноклип: Выкл"
-end)
-
-makeButton("Подсветка: Выкл", function()
-	toggles.Highlight = not toggles.Highlight
-	if toggles.Highlight then
-		for _, part in pairs(workspace:GetChildren()) do
-			if part:IsA("BasePart") and part.Name == "SpecialItem" then
-				local hl = Instance.new("Highlight")
-				hl.Adornee = part
-				hl.FillColor = Color3.fromRGB(255, 0, 0)
-				hl.FillTransparency = 0.5
-				hl.OutlineTransparency = 0
-				hl.Parent = part
-				table.insert(highlights, hl)
-			end
-		end
-	else
-		for _, hl in pairs(highlights) do
-			hl:Destroy()
-		end
-		highlights = {}
-	end
-	mainFrame:FindFirstChild("Подсветка: Выкл").Text = toggles.Highlight and "Подсветка: Вкл" or "Подсветка: Выкл"
-end)
-
-createThemeTitle("Игровые моды")
-
-makeButton("Ускорение: Выкл", function()
-	toggles.Speed = not toggles.Speed
-	if toggles.Speed then
-		character.Humanoid.WalkSpeed = 50
-	else
-		character.Humanoid.WalkSpeed = 16
-	end
-	mainFrame:FindFirstChild("Ускорение: Выкл").Text = toggles.Speed and "Ускорение: Вкл" or "Ускорение: Выкл"
-end)
-
-makeButton("Прыжок: Выкл", function()
-	toggles.JumpBoost = not toggles.JumpBoost
-	if toggles.JumpBoost then
-		character.Humanoid.JumpPower = 100
-	else
-		character.Humanoid.JumpPower = 50
-	end
-	mainFrame:FindFirstChild("Прыжок: Выкл").Text = toggles.JumpBoost and "Прыжок: Вкл" or "Прыжок: Выкл"
-end)
-
-makeButton("Авто подбор предметов: Выкл", function()
-	toggles.AutoPickup = not toggles.AutoPickup
-	mainFrame:FindFirstChild("Авто подбор предметов: Выкл").Text = toggles.AutoPickup and "Авто подбор предметов: Вкл" or "Авто подбор предметов: Выкл"
-end)
-
-makeButton("ESP игроков: Выкл", function()
-	toggles.ESPPlayers = not toggles.ESPPlayers
-	if not toggles.ESPPlayers then
-		for _, hl in pairs(espHighlights) do
-			hl:Destroy()
-		end
-		espHighlights = {}
-	else
-		for _, plr in pairs(Players:GetPlayers()) do
-			if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-				local highlight = Instance.new("Highlight")
-				highlight.Adornee = plr.Character
-				highlight.FillColor = Color3.fromRGB(0, 255, 0)
-				highlight.FillTransparency = 0.5
-				highlight.OutlineTransparency = 0
-				highlight.Parent = plr.Character
-				table.insert(espHighlights, highlight)
-			end
-		end
-	end
-	mainFrame:FindFirstChild("ESP игроков: Выкл").Text = toggles.ESPPlayers and "ESP игроков: Вкл" or "ESP игроков: Выкл"
-end)
-
-makeButton("Антистомп: Выкл", function()
-	toggles.AntiStomp = not toggles.AntiStomp
-	mainFrame:FindFirstChild("Антистомп: Выкл").Text = toggles.AntiStomp and "Антистомп: Вкл" or "Антистомп: Выкл"
-end)
-
-makeButton("FullBright: Выкл", function()
-	toggles.FullBright = not toggles.FullBright
-	if toggles.FullBright then
-		Lighting.Ambient = Color3.new(1, 1, 1)
-		Lighting.Brightness = 2
-		Lighting.TimeOfDay = "14:00:00"
-	else
-		Lighting.Ambient = Color3.fromRGB(128, 128, 128)
-		Lighting.Brightness = 1
-		Lighting.TimeOfDay = "12:00:00"
-	end
-	mainFrame:FindFirstChild("FullBright: Выкл").Text = toggles.FullBright and "FullBright: Вкл" or "FullBright: Выкл"
-end)
-
--- Функции цикла (для работы некоторых функций)
-
-RunService.Stepped:Connect(function()
+	updateButton("Noclip", toggles.Noclip)
 	if toggles.Noclip then
-		for _, part in pairs(character:GetChildren()) do
-			if part:IsA("BasePart") then
-				part.CanCollide = false
+		RunService.Stepped:Connect(function()
+			if toggles.Noclip and character and character:FindFirstChild("HumanoidRootPart") then
+				for _, part in pairs(character:GetChildren()) do
+					if part:IsA("BasePart") then
+						part.CanCollide = false
+					end
+				end
 			end
-		end
+		end)
 	else
-		for _, part in pairs(character:GetChildren()) do
-			if part:IsA("BasePart") then
-				part.CanCollide = true
-			end
-		end
-	end
-
-	if toggles.AutoPickup then
-		for _, item in pairs(workspace:GetChildren()) do
-			if item:IsA("BasePart") and item.Name == "PickupItem" then
-				local distance = (item.Position - character.HumanoidRootPart.Position).Magnitude
-				if distance < 15 then
-					character.HumanoidRootPart.CFrame = item.CFrame
-					wait(0.3)
-					-- Возможно нужна функция взаимодействия с предметом
+		if character then
+			for _, part in pairs(character:GetChildren()) do
+				if part:IsA("BasePart") then
+					part.CanCollide = true
 				end
 			end
 		end
 	end
+end
 
-	if toggles.AntiStomp then
-		-- Простая антистомп: при приземлении быстро подпрыгивает обратно
-		if character.Humanoid.FloorMaterial ~= Enum.Material.Air and character.Humanoid:GetState() == Enum.HumanoidStateType.Landed then
-			character.Humanoid.Jump = true
+-- Highlight (подсветка ближайших объектов)
+local function toggleHighlight()
+	toggles.Highlight = not toggles.Highlight
+	updateButton("Highlight", toggles.Highlight)
+	if toggles.Highlight then
+		-- Подсвечиваем ближайшие предметы с тегом "Pickup"
+		spawn(function()
+			while toggles.Highlight do
+				for _, h in pairs(highlights) do
+					h:Destroy()
+				end
+				highlights = {}
+				for _, obj in pairs(workspace:GetChildren()) do
+					if obj:IsA("BasePart") and obj.Name == "Pickup" then
+						local dist = (obj.Position - character.HumanoidRootPart.Position).Magnitude
+						if dist < 20 then
+							local hl = Instance.new("Highlight")
+							hl.Adornee = obj
+							hl.FillColor = Color3.fromRGB(0, 170, 255)
+							hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+							hl.Parent = gui
+							table.insert(highlights, hl)
+						end
+					end
+				end
+				wait(2)
+			end
+			for _, h in pairs(highlights) do
+				h:Destroy()
+			end
+			highlights = {}
+		end)
+	else
+		for _, h in pairs(highlights) do
+			h:Destroy()
+		end
+		highlights = {}
+	end
+end
+
+-- Speed (ускорение персонажа)
+local function toggleSpeed()
+	toggles.Speed = not toggles.Speed
+	updateButton("Speed", toggles.Speed)
+	if toggles.Speed then
+		if character and character:FindFirstChild("Humanoid") then
+			character.Humanoid.WalkSpeed = 50
+		end
+	else
+		if character and character:FindFirstChild("Humanoid") then
+			character.Humanoid.WalkSpeed = 16
 		end
 	end
-end)
+end
+
+-- JumpBoost (повышенный прыжок)
+local function toggleJumpBoost()
+	toggles.JumpBoost = not toggles.JumpBoost
+	updateButton("JumpBoost", toggles.JumpBoost)
+	if toggles.JumpBoost then
+		if character and character:FindFirstChild("Humanoid") then
+			character.Humanoid.JumpPower = 100
+		end
+	else
+		if character and character:FindFirstChild("Humanoid") then
+			character.Humanoid.JumpPower = 50
+		end
+	end
+end
+
+-- AutoPickup (автоматический подбор предметов)
+local function toggleAutoPickup()
+	toggles.AutoPickup = not toggles.AutoPickup
+	updateButton("AutoPickup", toggles.AutoPickup)
+	if toggles.AutoPickup then
+		spawn(function()
+			while toggles.AutoPickup do
+				for _, obj in pairs(workspace:GetChildren()) do
+					if obj:IsA("BasePart") and obj.Name == "Pickup" then
+						local dist = (obj.Position - character.HumanoidRootPart.Position).Magnitude
+						if dist < 5 then
+							-- Пример: телепортируем предмет к игроку
+							obj.CFrame = character.HumanoidRootPart.CFrame
+						end
+					end
+				end
+				wait(1)
+			end
+		end)
+	end
+end
+
+-- ESPPlayers (подсветка игроков)
+local function toggleESPPlayers()
+	toggles.ESPPlayers = not toggles.ESPPlayers
+	updateButton("ESPPlayers", toggles.ESPPlayers)
+	if toggles.ESPPlayers then
+		spawn(function()
+			while toggles.ESPPlayers do
+				for plr, hl in pairs(espHighlights) do
+					if not plr.Parent or plr == player then
+						hl:Destroy()
+						espHighlights[plr] = nil
+					end
+				end
+				for _, plr in pairs(Players:GetPlayers()) do
+					if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+						if not espHighlights[plr] then
+							local hl = Instance.new("Highlight")
+							hl.Adornee = plr.Character
+							hl.FillColor = Color3.fromRGB(255, 0, 0)
+							hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+							hl.Parent = gui
+							espHighlights[plr] = hl
+						end
+					end
+				end
+				wait(2)
+			end
+			for _, hl in pairs(espHighlights) do
+				hl:Destroy()
+			end
+			espHighlights = {}
+		end)
+	else
+		for _, hl in pairs(espHighlights) do
+			hl:Destroy()
+		end
+		espHighlights = {}
+	end
+end
+
+-- AntiStomp (предотвращает падение от удара)
+local function toggleAntiStomp()
+	toggles.AntiStomp = not toggles.AntiStomp
+	updateButton("AntiStomp", toggles.AntiStomp)
+	if toggles.AntiStomp then
+		if character and character:FindFirstChild("Humanoid") then
+			character.Humanoid.StateChanged:Connect(function(old,new)
+				if toggles.AntiStomp and new == Enum.HumanoidStateType.Freefall then
+					character.Humanoid:ChangeState(Enum.HumanoidStateType.Landed)
+				end
+			end)
+		end
+	end
+end
+
+-- FullBright (вечный свет)
+local function toggleFullBright()
+	toggles.FullBright = not toggles.FullBright
+	updateButton("FullBright", toggles.FullBright)
+	if toggles.FullBright then
+		Lighting.ClockTime = 14
+		Lighting.Brightness = 3
+		Lighting.FogEnd = 100000
+		Lighting.GlobalShadows = false
+	else
+		-- Восстанавливаем стандартные значения (настрой их по вкусу)
+		Lighting.ClockTime = 14
+		Lighting.Brightness = 1
+		Lighting.FogEnd = 1000
+		Lighting.GlobalShadows = true
+	end
+end
+
+-- Добавляем кнопки с разделами --
+
+createThemeHeader("Основные функции")
+makeButton("DeleteWall", toggleDeleteWall)
+makeButton("Noclip", toggleNoclip)
+makeButton("Highlight", toggleHighlight)
+makeButton("Speed", toggleSpeed)
+makeButton("JumpBoost", toggleJumpBoost)
+
+createThemeHeader("Авто")
+makeButton("AutoPickup", toggleAutoPickup)
+
+createThemeHeader("Защита и ESP")
+makeButton("ESPPlayers", toggleESPPlayers)
+makeButton("AntiStomp", toggleAntiStomp)
+makeButton("FullBright", toggleFullBright)
